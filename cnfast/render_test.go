@@ -254,3 +254,40 @@ func TestWriteStrClosingLine(t *testing.T) {
 		}
 	}
 }
+
+// TestFenceLeadingWhitespace pins block fences whose lines open
+// with whitespace other than the indent's own character: the parse
+// reads a line's whole leading run as indent, so the render escapes
+// what the indent cannot hold, escalating raw fences to escaped.
+func TestFenceLeadingWhitespace(t *testing.T) {
+	for _, indent := range []string{"", "  ", "    ", "\t"} {
+		for _, q := range []QuoteKind{SingleFenced, DoubleFenced} {
+			for _, data := range []string{"\tx\n", " x\n", "\t\n", " \n", "  \tx\n", " \tx\n", "x\n\t\n", "\t", " x"} {
+				str := &Str{Data: data, Quote: q, Block: true}
+				root := &Item{Value: str}
+				if indent != "" {
+					root = &Item{Value: &Map{Block: true, Items: []*Item{{
+						Key: []*Str{{Data: "a"}}, Value: str, Indent: indent,
+					}}}}
+				}
+				out, err := Render(root, nil)
+				if err != nil {
+					t.Errorf("indent %q quote %d data %q: render: %s", indent, q, data, err)
+					continue
+				}
+				back, err := Parse(out, nil)
+				if err != nil {
+					t.Errorf("indent %q quote %d data %q: %q does not parse: %s", indent, q, data, out, err)
+					continue
+				}
+				got := back.Value
+				if indent != "" {
+					got = got.(*Map).Items[0].Value
+				}
+				if s, ok := got.(*Str); !ok || s.Data != data {
+					t.Errorf("indent %q quote %d data %q: %q reads back as %#v", indent, q, data, out, got)
+				}
+			}
+		}
+	}
+}
