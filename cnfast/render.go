@@ -153,8 +153,13 @@ func writeStr(b *strings.Builder, s *Str, indent string) error {
 		return fmt.Errorf("cannot render %T as a block", s)
 	}
 	// A recorded block - made for this shape, every element carrying its
-	// own tail - writes verbatim.
-	if texted && !compact {
+	// own tail - writes verbatim, while its lines' leading whitespace
+	// still reads as content under the indent it now sits at.
+	indentChar := byte(' ')
+	if indent != "" {
+		indentChar = indent[0]
+	}
+	if texted && !compact && rawLeadsWith(strings.Join(s.Text, ""), indentChar) {
 		delim := "'''"
 		if s.Quote == DoubleFenced {
 			delim = `"""`
@@ -176,7 +181,9 @@ func writeStr(b *strings.Builder, s *Str, indent string) error {
 	}
 	// Everything else spells fresh: encode writes the fence from the
 	// content, marking away a missing final newline.
-	_, err := s.encode(b, indent, nil)
+	fresh := *s
+	fresh.Data, fresh.Text = decoded, nil
+	_, err := fresh.encode(b, indent, nil)
 	return err
 }
 
