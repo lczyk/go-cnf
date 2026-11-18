@@ -297,6 +297,9 @@ func writeBlockList(b *strings.Builder, l *List, indent string, head, foot Cmt) 
 		b.WriteString(indent)
 		b.WriteString("---\n")
 		for _, item := range l.Items {
+			if len(item.Key) == 0 {
+				writeCmt(b, item.PreCmt, indent)
+			}
 			if len(item.Key) > 0 {
 				// A keyed element in the fence form renders as its own one-pair
 				// map: the dash spelling has no fence counterpart.
