@@ -102,6 +102,29 @@ func TestParseRenderRoundTrip(t *testing.T) {
 	}
 }
 
+// TestNestedListFenceAfterBlank pins the nested list fence that
+// opens after a blank line: the element records the fence's
+// indent, so the render writes it nested and it reads back.
+func TestNestedListFenceAfterBlank(t *testing.T) {
+	src := "0:\n    ---\n\n        ---\n        0\n        ---\n    ---\n"
+	ast, err := Parse([]byte(src), nil)
+	if err != nil {
+		t.Fatalf("parse: %s", err)
+	}
+	out, err := Render(ast, nil)
+	if err != nil {
+		t.Fatalf("render: %s", err)
+	}
+	back, err := Parse(out, nil)
+	if err != nil {
+		t.Fatalf("render %q does not parse back: %s", out, err)
+	}
+	outer := back.Value.(*Map).Items[0].Value.(*List)
+	if len(outer.Items) != 1 || outer.Items[0].Indent != "    " {
+		t.Fatalf("render %q lost the nested fence", out)
+	}
+}
+
 // TestParseRecords pins the recorded elements of the strings
 // the round trip walks: the element grammar - every element
 // closed by its own terminator or marker, the compact
