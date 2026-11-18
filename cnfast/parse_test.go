@@ -85,6 +85,11 @@ func TestParseRenderRoundTrip(t *testing.T) {
 		`a: "x\ny"` + "\n",
 		"a: 'raw'\n",
 
+		// comments after a nested list fence's close trail its
+		// element, at the nested fence's indent
+		"a:\n  ---\n    ---\n    0\n    ---\n    # comment\n  ---\n",
+		"---\n  ---\n  0\n  ---\n  # c\n\n  # d\n---\n1\n---\n",
+
 		// comments ahead of list fence elements of every kind stay
 		// with the element they precede
 		"---\n# c\n0\n---\n",

@@ -808,6 +808,9 @@ func (p *parser) parseListFence(next line) (Value, error) {
 			// that comes after the element's value.
 			return nil, errAt(indentPos(sub.lines[sub.pos]), "cannot parse content in list fence element")
 		}
+		// A nested fence's look-ahead may have passed comments after its
+		// close: they trail the element.
+		eitem.PostCmt = cmtOf(sub.pending)
 		eitem.Value = val
 		l.Items = append(l.Items, eitem)
 		// The fence continues while the next structural line sits
