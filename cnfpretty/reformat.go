@@ -840,6 +840,9 @@ func (p Options) unfoldItem(out *cnfast.Map, item *cnfast.Item, root int) error 
 		InCmt:   item.InCmt,
 		Indent:  defaultIndent,
 	}
+	// The comments move with the value: left on the outer item too, a
+	// foot comment would write twice, and any would hold back a fold.
+	item.HeadCmt, item.FootCmt, item.InCmt = cnfast.Cmt{}, cnfast.Cmt{}, cnfast.Cmt{}
 	if !isBlock(inner.Value) {
 		inner.Indent = "" // an inline or scalar value carries no fresh level
 	}
