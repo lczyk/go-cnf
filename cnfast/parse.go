@@ -766,15 +766,6 @@ func (p *parser) parseListFence(next line) (Value, error) {
 			}
 			return nil, errAt(indentPos(open), "cannot parse empty list fence element")
 		}
-		// Nested fences must share one indent: the first one's opening
-		// --- sets it.
-		if elem[0].text == "---" && len(elem[0].indent) > len(prefix) {
-			if nested == "" {
-				nested = elem[0].indent
-			} else if elem[0].indent != nested {
-				return nil, errAt(indentPos(elem[0]), "cannot mix indents inside list fence")
-			}
-		}
 		p.pos++
 		sub := &parser{lines: elem}
 		// The element may open with comment and blank lines; the
@@ -786,6 +777,15 @@ func (p *parser) parseListFence(next line) (Value, error) {
 				open = p.lines[start-1]
 			}
 			return nil, errAt(indentPos(open), "cannot parse empty list fence element")
+		}
+		// Nested fences must share one indent: the first one's opening
+		// --- sets it.
+		if first.text == "---" && len(first.indent) > len(prefix) {
+			if nested == "" {
+				nested = first.indent
+			} else if first.indent != nested {
+				return nil, errAt(indentPos(first), "cannot mix indents inside list fence")
+			}
 		}
 		eitem := &Item{}
 		if nested != "" {
