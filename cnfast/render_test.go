@@ -291,3 +291,43 @@ func TestFenceLeadingWhitespace(t *testing.T) {
 		}
 	}
 }
+
+// TestRecordedFenceReindented pins a recorded block fence moved to an
+// indent of the other character: the recorded lines' leading whitespace
+// would read as a mixed indent there, so the fence respells fresh, and
+// reads back the same. A record that still fits writes verbatim.
+func TestRecordedFenceReindented(t *testing.T) {
+	for _, tc := range []struct{ src, indent, want string }{
+		{"a:\n\t'''\n\t\tx\n\t'''\n", "    ", "\tx\n"},
+		{"a:\n    '''\n      x\n    '''\n", "\t", "  x\n"},
+		{"a:\n    \"\"\"\n      x\n    \"\"\"\n", "\t", "  x\n"},
+		{"a:\n\t\"\"\"\n\t\tx\\\n\t\"\"\"\n", "  ", "\tx"},
+	} {
+		root, err := Parse([]byte(tc.src), nil)
+		if err != nil {
+			t.Fatalf("parse %q: %s", tc.src, err)
+		}
+		root.Value.(*Map).Items[0].Indent = tc.indent
+		out, err := Render(root, nil)
+		if err != nil {
+			t.Errorf("%q under %q: render: %s", tc.src, tc.indent, err)
+			continue
+		}
+		back, err := Parse(out, nil)
+		if err != nil {
+			t.Errorf("%q under %q: %q does not parse back: %s", tc.src, tc.indent, out, err)
+			continue
+		}
+		if got := back.Value.(*Map).Items[0].Value.(*Str).Data; got != tc.want {
+			t.Errorf("%q under %q: %q reads back as %q", tc.src, tc.indent, out, got)
+		}
+	}
+
+	src := "a:\n    '''\n    x\n    '''\n"
+	root, _ := Parse([]byte(src), nil)
+	root.Value.(*Map).Items[0].Indent = "\t"
+	out, err := Render(root, nil)
+	if want := "a:\n\t'''\n\tx\n\t'''\n"; err != nil || string(out) != want {
+		t.Errorf("fitting record: %q, %v; want %q", out, err, want)
+	}
+}
