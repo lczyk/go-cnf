@@ -291,3 +291,26 @@ func TestUnfoldThenFoldKeepsLine(t *testing.T) {
 		}
 	}
 }
+
+// TestUnfoldMergeKeepsComments pins the comments of a line whose
+// unfolded key merges into a key already held: the merged line is gone,
+// so its comments go with the items it brings, never lost.
+func TestUnfoldMergeKeepsComments(t *testing.T) {
+	for _, tc := range []struct{ src, want string }{
+		{"a:\n    b: 1\n# c\na.c: 2\n", "a:\n    b: 1\n    # c\n    c: 2\n"},
+		{"a:\n    b: 1\na.c: 2 # in\n", "a:\n    b: 1\n    c: 2 # in\n"},
+		{"a:\n    b: 1\n# c\na.c.d: 2\n", "a:\n    b: 1\n    # c\n    c:\n        d: 2\n"},
+	} {
+		root, err := cnfast.Parse([]byte(tc.src), nil)
+		if err != nil {
+			t.Fatalf("parse %q: %s", tc.src, err)
+		}
+		if err := Apply(root, &Options{UnfoldPathUptoDepth: 5}); err != nil {
+			t.Fatalf("unfold %q: %s", tc.src, err)
+		}
+		out, err := cnfast.Render(root, nil)
+		if err != nil || string(out) != tc.want {
+			t.Errorf("unfold %q = %q, %v; want %q", tc.src, out, err, tc.want)
+		}
+	}
+}
