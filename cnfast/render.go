@@ -223,6 +223,15 @@ func (s *Str) decode(b *strings.Builder) error {
 // each encoded line - the content and its tail, indent stripped.
 func (s *Str) encode(b *strings.Builder, indent string, textf func(string)) (QuoteKind, error) {
 	query := resolveQuote(s.Data, s.Quote, true)
+	// A fence line's leading whitespace reads as indent, so it must be the
+	// indent's own character - a space at the top level.
+	indentChar := byte(' ')
+	if indent != "" {
+		indentChar = indent[0]
+	}
+	if query == SingleFenced && !rawLeadsWith(s.Data, indentChar) {
+		query = DoubleFenced
+	}
 	delim := "'''"
 	if query == DoubleFenced {
 		delim = `"""`
@@ -251,7 +260,18 @@ func (s *Str) encode(b *strings.Builder, indent string, textf func(string)) (Quo
 			// back to the same value.
 			b.WriteString(`\"""`)
 		default:
-			escapeDoubleFenced(b, line)
+			lead := len(line) - len(strings.TrimLeft(line, " \t"))
+			for i := 0; i < lead; i++ {
+				switch c := line[i]; {
+				case c == indentChar:
+					b.WriteByte(c)
+				case c == ' ':
+					b.WriteString(`\x20`)
+				default:
+					b.WriteString(escapeRune(rune(c)))
+				}
+			}
+			escapeDoubleFenced(b, line[lead:])
 		}
 		// The element's tail: a marker when the value ends without a
 		// newline - only the escaped family can spell it - else the
@@ -550,6 +570,19 @@ func isBareWord(s string) bool {
 	for _, r := range s {
 		if !isBareRune(r) {
 			return false
+		}
+	}
+	return true
+}
+
+// rawLeadsWith reports whether every line of s opens with whitespace of
+// c alone, the only leading whitespace a raw fence can hold.
+func rawLeadsWith(s string, c byte) bool {
+	for _, line := range strings.Split(s, "\n") {
+		for i := 0; i < len(line) && (line[i] == ' ' || line[i] == '\t'); i++ {
+			if line[i] != c {
+				return false
+			}
 		}
 	}
 	return true
