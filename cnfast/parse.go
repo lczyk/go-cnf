@@ -788,6 +788,12 @@ func (p *parser) parseListFence(next line) (Value, error) {
 			}
 		}
 		eitem := &Item{}
+		if !isListItem(first.text) && !(first.indent == prefix && looksLikeItem(first.text)) {
+			// A map or dashed list takes the comments ahead of it as its
+			// own; any other element holds them before itself.
+			eitem.PreCmt = cmtOf(sub.pending)
+			sub.pending = nil
+		}
 		if nested != "" {
 			// A nested fence sits one indent deeper than the
 			// fence's delimiters; a flat element adds nothing.
@@ -806,11 +812,14 @@ func (p *parser) parseListFence(next line) (Value, error) {
 		l.Items = append(l.Items, eitem)
 		// The fence continues while the next structural line sits
 		// at its prefix or deeper; a shallower line closes it
-		// and stays in the stream for the parent.
+		// and stays in the stream for the parent. When it goes on,
+		// the comments passed on the way belong to the next element.
+		mark, pending := p.pos, len(p.pending)
 		ln, ok := p.peekStruct(prefix)
 		if !ok || len(ln.indent) < len(prefix) {
 			return l, nil
 		}
+		p.pos, p.pending = mark, p.pending[:pending]
 	}
 }
 
